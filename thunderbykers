@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThunderBikers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            display: none;
+        }
+        .pagination {
+            display: none;
+        }
+        @media (max-width: 640px) {
+            .table-container {
+                max-height: 400px;
+            }
+            th, td {
+                font-size: 0.75rem;
+                padding: 0.5rem;
+            }
+            .search-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            .pagination button {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+        }
+        .search-container {
+            position: relative;
+        }
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        .row-hover:hover {
+            background-color: #E6F3FA;
+            cursor: pointer;
+            transform: scale(1.01);
+            transition: all 0.2s ease-in-out;
+        }
+        .loading-spinner {
+            display: none;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #0D5C63;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin-left: 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pagination button {
+            transition: all 0.2s ease-in-out;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .initial-message {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-teal-50">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        <!-- Header with Logo -->
+<header class="flex items-center justify-between mb-8">
+    <img 
+        src="img.png" 
+        alt="ThunderBikers Logo" 
+        class="w-16 h-16 sm:w-20 sm:h-20 lg:w-28 lg:h-28 rounded-full object-cover"
+    >
+    <h1 class="text-lg sm:text-2xl lg:text-4xl font-bold text-teal-900 text-center flex-1 mx-4">
+        1er Reto ThunderBIkers MTB Zihuatanejo 2025
+    </h1>
+    <!-- Placeholder for spacing/alignment -->
+    <div class="w-16 sm:w-20 lg:w-28 hidden sm:block"></div>
+</header>
+
+
+        <!-- Search and Results -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="search-container flex items-center gap-4">
+                <div class="relative flex-1">
+                    <svg class="search-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Buscar por folio, nombre, equipo, etc..." 
+                           class="w-full p-3 pl-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <div id="loadingSpinner" class="loading-spinner"></div>
+                </div>
+                <button id="clearSearch" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    Limpiar
+                </button>
+            </div>
+            <p id="resultsCount" class="text-sm text-gray-600 mt-2"></p>
+        </div>
+
+        <!-- Initial Message -->
+        <div id="initialMessage" class="initial-message">
+            <svg class="w-12 h-12 mx-auto mb-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+            <p class="text-lg text-gray-700">Ingresa un término para realizar la búsqueda de tus datos.</p>
+        </div>
+
+        <!-- Table -->
+        <div id="tableContainer" class="table-container bg-white rounded-lg shadow-lg overflow-x-auto">
+            <table id="cyclistTable" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-teal-800 text-white sticky top-0">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-sm font-medium">Folio</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium">Nombre</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium">Equipo</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium">Kit</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium">Talla</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium">Ruta</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium">Menor de Edad</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="pagination mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p id="pageInfo" class="text-sm text-gray-600"></p>
+            <div class="flex items-center gap-2 flex-wrap justify-center">
+                <button id="firstPage" class="bg-teal-600 text-white px-3 py-1 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">Primera</button>
+                <button id="prevPage" class="bg-teal-600 text-white px-3 py-1 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">Anterior</button>
+                <div id="pageNumbers" class="flex gap-1"></div>
+                <button id="nextPage" class="bg-teal-600 text-white px-3 py-1 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">Siguiente</button>
+                <button id="lastPage" class="bg-teal-600 text-white px-3 py-1 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">Última</button>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <h2 class="text-xl font-bold text-teal-900 mb-4">Detalles del Ciclista</h2>
+                <div id="modalContent" class="text-gray-700 space-y-3"></div>
+                <button id="closeModal" class="mt-6 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 transition w-full">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+    const cyclists = 
+[
+  {folio: 1, nombre: "Daniel Cebrero Galicia", equipo: "Justicieros del Pedal", kit: 1, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 2, nombre: "Christopher Flores Pelayo", equipo: "ZihuaBikers", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 3, nombre: "Anyer Flores Flores", equipo: "ZihuaBikers", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 4, nombre: "Liliana Flores García", equipo: "ZihuaBikers", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 5, nombre: "Regina Flores Flores", equipo: "ZihuaBikers", kit: 4, talla: "L", ruta: "Corta", menor: "Si"},
+  {folio: 6, nombre: "Krissia Flores Flores", equipo: "ZihuaBikers", kit: 4, talla: "S", ruta: "Corta", menor: "Si"},
+  {folio: 7, nombre: "Nora Alarcon", equipo: "Sin Grupo", kit: 1, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 8, nombre: "Felix Chavez", equipo: "Sin Grupo", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 9, nombre: "J. Guadalupe Alfaro Rodriguez", equipo: "Rodadores Bike", kit: 1, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 10, nombre: "Mariano Mancera Centeno", equipo: "Rodadores Bike", kit: 1, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 11, nombre: "Honorio Espinoza Alvarez", equipo: "Mapaches MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 12, nombre: "Julio Cesar Hurtado Tapia", equipo: "Mapaches MTB", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 13, nombre: "Marco Antonio Naranjo Mora", equipo: "Mapaches MTB", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 14, nombre: "Oscar Enrique Tapia González", equipo: "Mapaches MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 15, nombre: "Leonel Ramirez Nieto", equipo: "Mapaches MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 16, nombre: "Diego Esteban Alvarado Carrillo", equipo: "Mapaches MTB", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 17, nombre: "Edgar Alcaraz Falgo", equipo: "Mapaches MTB", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 18, nombre: "Josue Espinoza Ramirez", equipo: "Mapaches MTB", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 19, nombre: "Tavo Solorio Loya", equipo: "Mapaches MTB", kit: 4, talla: "XXXL", ruta: "Corta", menor: ""},
+  {folio: 20, nombre: "Tavo Jr Solorio Cisneros", equipo: "Mapaches MTB", kit: 4, talla: "L", ruta: "Corta", menor: "Si"},
+  {folio: 21, nombre: "Marcial Antonio Alvarado Carrillo", equipo: "Mapaches MTB", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 22, nombre: "Juan Ramirez Nieto", equipo: "Mapaches MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 23, nombre: "Rebeca Zavala Rodríguez", equipo: "Independiente", kit: 2, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 24, nombre: "Gabriel Eduardo Madrigal Castañeda", equipo: "Independiente", kit: 2, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 25, nombre: "Germán Zavala Ochoa", equipo: "Independiente", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 26, nombre: "Jesús Daniel Pérez Castañeda", equipo: "Rines Chuecos", kit: 2, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 27, nombre: "Luis Rey castro Ramirez", equipo: "Rines Chuecos", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 28, nombre: "Jorge Rangel Mancillas", equipo: "Rines Chuecos", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 29, nombre: "Adrián Trejo Herrera", equipo: "Rines Chuecos", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 30, nombre: "Sergio Orlando Rivas Mozqueda", equipo: "Rines Chuecos", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 31, nombre: "Christian Landeros Gaona", equipo: "Rines Chuecos", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 32, nombre: "Valentin Mendiola Gómez", equipo: "Rines Chuecos", kit: 4, talla: "XXXL", ruta: "Corta", menor: ""},
+  {folio: 33, nombre: "Carlos Razo", equipo: "Rines Chuecos", kit: 2, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 34, nombre: "César Méndez Durán", equipo: "Rines Chuecos", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 35, nombre: "Raul Solis Pineda", equipo: "Independiente", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 36, nombre: "Pedro Mendoza Barrera", equipo: "Pedalitos Team Morelia", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 37, nombre: "Raymundo Ramírez Suárez", equipo: "Rines Chuecos", kit: 4, talla: "XXXL", ruta: "Corta", menor: ""},
+  {folio: 38, nombre: "Jesus morales García", equipo: "Alacranes Bike Team", kit: 2, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 39, nombre: "Jesus López", equipo: "Pedalitos Team Morelia", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 40, nombre: "Daniel Pérez Barrera", equipo: "Sexyclistas", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 41, nombre: "Jesús Gutierrez V", equipo: "Independiente", kit: 3, talla: "S", ruta: "Larga", menor: "Si"},
+  {folio: 42, nombre: "Fernando Laguna Musico", equipo: "Rodadores Bike", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 43, nombre: "Liduvina Guido Conde", equipo: "Tecuanis Bikers", kit: 1, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 44, nombre: "Jesús Enrique Galindo Vázquez", equipo: "Paradas continuas MTB LZC", kit: 4, talla: "Infantil 8", ruta: "Corta", menor: ""},
+  {folio: 45, nombre: "Karina Carrillo", equipo: "Gordon in Bike", kit: 3, talla: "XS", ruta: "Larga", menor: ""},
+  {folio: 46, nombre: "Julián Quezada Bejar", equipo: "Gordon in Bike", kit: 1, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 47, nombre: "Abraham Sánchez", equipo: "Gordon in Bike", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 48, nombre: "Luis Eduardo Trujillo Peñaloza", equipo: "Estibadores crom", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 49, nombre: "Erika Yumaira Torres Jiménez", equipo: "Independiente", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 50, nombre: "Fidel Torres Hernández", equipo: "Costa Grande JA", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 51, nombre: "Luis Ernesto Marun Rodríguez", equipo: "Rines Chuecos", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 52, nombre: "Antonio de Jesús Cosío Pérez", equipo: "Cocodrilos Bikers", kit: 1, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 53, nombre: "Ricardo Hernández Suárez", equipo: "Parada Continuas MTB LZC", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 54, nombre: "Lombardo Vielma Garcia", equipo: "Cocodrilos Bikers", kit: 2, talla: "XXXL", ruta: "Corta", menor: ""},
+  {folio: 55, nombre: "Mario Alberto Flores Acosta", equipo: "Lobos MTB Irapuato", kit: 3, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 56, nombre: "Martín Robles García", equipo: "Independiente", kit: 3, talla: "M", ruta: "Larga", menor: "Si"},
+  {folio: 57, nombre: "Eusebio Mercado Gutiérrez", equipo: "Cocodrilos Bikers", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 58, nombre: "Carlos Adalid Ramirez Rusiles", equipo: "Cocodrilos Bikers", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 59, nombre: "Jose Armando Tenorio Vazquez", equipo: "Cocodrilos Bikers", kit: 1, talla: "M", ruta: "Corta", menor: "Si"},
+  {folio: 60, nombre: "Carlos Guzman Valle", equipo: "Chavos Bike", kit: 1, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 61, nombre: "Juanita Valle Saldaña", equipo: "Chavos Bike", kit: 1, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 62, nombre: "Sonia Vázquez Carmona", equipo: "Cocodrilos Bikers", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 63, nombre: "Miguel Angel Olivar Valente", equipo: "Novatos Bike", kit: 1, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 64, nombre: "Sergio Alejandro García Flores", equipo: "Cocodrilos Bikers", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 65, nombre: "Sergio Armando Cobian Tapia", equipo: "Mapaches MTB", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 66, nombre: "Hugo Daniel Botello Guerrero", equipo: "Mapaches MTB", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 67, nombre: "Joaquin Alberto Perez Garcia de Leon", equipo: "Cocodrilos Bikers", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 68, nombre: "Raul Leonardo Mendoza", equipo: "BBS en la Pedaleada", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 69, nombre: "Jose Maria Mendoza", equipo: "BBS en la Pedaleada", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 70, nombre: "Leonel Barrera Santana", equipo: "Nogaleros MTB", kit: 2, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 71, nombre: "Luis Torres", equipo: "Pareo Mich", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 72, nombre: "Rodrigo Lucatero", equipo: "Pareo Mich", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 73, nombre: "Ariz Torres", equipo: "Pareo Mich", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 74, nombre: "Ramiro Lucatero", equipo: "Pareo Mich", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 75, nombre: "Manuel Martínez", equipo: "Nogaleros MTB", kit: 3, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 76, nombre: "Humberto Santana Ortiz", equipo: "Techers mada fakers", kit: 3, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 77, nombre: "Héctor Santana Ortiz", equipo: "Techers mada fakers", kit: 3, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 78, nombre: "Miguel Ángel Cerda Vázquez", equipo: "Coma-Drejas MTB", kit: 2, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 79, nombre: "Wilberd Pérez", equipo: "Cocodrilos Bikers", kit: 4, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 80, nombre: "Luis Angel Victoria Ramírez", equipo: "San Isidro Bikes", kit: 2, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 81, nombre: "Ulises Medina Aguilar", equipo: "Sin Grupo", kit: 2, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 82, nombre: "Ulises Medina Aguilar", equipo: "Sin Grupo", kit: 2, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 83, nombre: "Pako Rangel Castro", equipo: "Pedalitos Team Morelia", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 84, nombre: "Carlos Carsan", equipo: "Cocodrilos Bikers", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 85, nombre: "Julio Cesar Flores Olayo", equipo: "Huetamo Biker", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 86, nombre: "Vicente Garcia Santana", equipo: "Piernas de Oro Garcia", kit: 2, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 87, nombre: "Daniela Rodriguez Huante", equipo: "Piernas de Oro Garcia", kit: 2, talla: "XS", ruta: "Corta", menor: ""},
+  {folio: 101, nombre: "Aaron Diaz", equipo: "BBS en la Pedaleada", kit: 1, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 102, nombre: "Alison Gómez", equipo: "BBS en la Pedaleada", kit: 1, talla: "XS", ruta: "Corta", menor: ""},
+  {folio: 103, nombre: "Raymundo Solencio Yacuta", equipo: "BBS en la Pedaleada", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 104, nombre: "Iván de Jesús Díaz Alcalá", equipo: "BBS en la Pedaleada", kit: 1, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 105, nombre: "José Manuel Guzmán Rosario", equipo: "Guzmán”s Tours", kit: 2, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 106, nombre: "Mari García", equipo: "Pirindas Bikers", kit: 1, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 107, nombre: "Julian Pérez García", equipo: "Pirindas Bikers", kit: 2, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 108, nombre: "Pett Pérez García", equipo: "Pirindas Bikers", kit: 4, talla: "S", ruta: "Corta", menor: "Si"},
+  {folio: 109, nombre: "Pedro Pérez Alonso", equipo: "Pirindas Bikers", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 110, nombre: "Keren Solís", equipo: "Pirindas Bikers", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 111, nombre: "Etzel Monserrat Morfin Torres", equipo: "Pirindas Bikers", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 112, nombre: "Alfredo Peñaloza", equipo: "Pirindas Bikers", kit: 3, talla: "XXXL", ruta: "Corta", menor: ""},
+  {folio: 113, nombre: "Teresa Morales Molina", equipo: "ZihuaBikers", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 114, nombre: "Radek Agustín Martínez Díaz", equipo: "ZihuaBikers", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 115, nombre: "Mario Eduardo Navarro Beltrán", equipo: "BBS en la Pedaleada", kit: 3, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 116, nombre: "Omar Landa Villa", equipo: "Techers madafakers", kit: 1, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 117, nombre: "Berenice Leal Fuentes", equipo: "Jinetes", kit: 4, talla: "XS", ruta: "Larga", menor: ""},
+  {folio: 118, nombre: "Fernando Barrientos Bailon", equipo: "Sin grupo", kit: 3, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 119, nombre: "Erick Cebrero Galicia", equipo: "Justicieros del Pedal", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 120, nombre: "Hipólito Rodríguez Reynoso", equipo: "Pedaleros MTB", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 121, nombre: "Hugo Cesar Galvan Romero", equipo: "Gost Riders", kit: 1, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 122, nombre: "Mario Navarro Garcia", equipo: "BBS en la Pedaleada", kit: 1, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 123, nombre: "Sergio Alfonso Garcia Gurrola", equipo: "Jinetes", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 124, nombre: "Emmanuel Simón Solís", equipo: "Sin grupo", kit: 4, talla: "XL", ruta: "Corta", menor: "Si"},
+  {folio: 125, nombre: "Miguel Ángel Perez Martínez", equipo: "Cocodrilos Bikers", kit: 1, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 126, nombre: "Miguel Ángel Perez Muñiz", equipo: "Cocodrilos Bikers", kit: 1, talla: "M", ruta: "Larga", menor: "Si"},
+  {folio: 127, nombre: "Erika García Manzano", equipo: "Bombones MTB", kit: 3, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 128, nombre: "Javier Hernández Trejo", equipo: "Bombones MTB", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 129, nombre: "Jorge Luis Castillo Àlvarez", equipo: "Bombones MTB", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 130, nombre: "Alberto Beltrán Morales", equipo: "Pedalitos Team Morelia", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 131, nombre: "Dulce Massiel González", equipo: "Pedalitos Team Morelia", kit: 4, talla: "S", ruta: "Larga", menor: ""},
+  {folio: 132, nombre: "David Oscos", equipo: "Bombones MTB", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 133, nombre: "Ruben Hernández Trejo", equipo: "Bombones MTB", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 134, nombre: "Gustavo Pérez Garcia", equipo: "Mapaches MTB", kit: 3, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 135, nombre: "Mayra Guadalupe Ramírez López", equipo: "Grillo MTB", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 136, nombre: "Oscar Jiménez", equipo: "Grillo MTB", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 137, nombre: "Jaime Torres León", equipo: "Grillo MTB", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 138, nombre: "Pedro Mireles Gómez", equipo: "Rines Chuecos", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 139, nombre: "Aldo Zoé González Valdovinos", equipo: "Sin griupo", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 140, nombre: "Jorge Valentín Fonseca Paredes", equipo: "Cocodrilos Bikers", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 141, nombre: "Lucina Cortés Callejas", equipo: "ZihuaBikers", kit: 1, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 142, nombre: "Pedro Mireles Gómez", equipo: "Rines Chuecos", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 143, nombre: "Iván Valdovinos Valdez", equipo: "Sin grupo", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 144, nombre: "Ricardo Elías", equipo: "Rines Chuecos", kit: 1, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 145, nombre: "Armando Sánchez Gallardo", equipo: "Calambres Racing Team", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 146, nombre: "Joel Baeza", equipo: "Bombones MTB", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 147, nombre: "Miguel Hernández De la Cruz", equipo: "Mapaches MTB", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 148, nombre: "Gabriel Flores Lozano", equipo: "Grillo MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 149, nombre: "Daniel Alberto Reyes Dimas", equipo: "Grillo MTB", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 150, nombre: "Cesar Chávez Yepes", equipo: "Grillo MTB", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 151, nombre: "David Negrete Jamaica", equipo: "Grillo MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 152, nombre: "Juanito Pérez", equipo: "Grillo MTB", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 153, nombre: "Víctor Becerril Tellechea", equipo: "Sin grupo", kit: 2, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 154, nombre: "Irving Alfredo Vázquez Perez", equipo: "Cocodrilos Bikers", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 155, nombre: "Lizeth Torres Rivera", equipo: "Coma-Drejas MTB", kit: 1, talla: "XS", ruta: "Corta", menor: ""},
+  {folio: 156, nombre: "Fernando Gonzalez Avila", equipo: "Cocodrilos Bikers", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 157, nombre: "Noé Suárez Casiano", equipo: "BBS en la Pedaleada", kit: 3, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 158, nombre: "Ricardo Pérez Leyva", equipo: "Bicimas", kit: 2, talla: "S", ruta: "Larga", menor: "Si"},
+  {folio: 159, nombre: "Felipe Sanchez Gaspar", equipo: "Sánchez Bike", kit: 1, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 160, nombre: "Erick Jesús Natividad Bacilio", equipo: "Sin grupo", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 161, nombre: "Paola Ontiveros San Juan", equipo: "Sin grupo", kit: 3, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 162, nombre: "Omar Jimenez Santos", equipo: "Los Correcaminos", kit: 2, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 163, nombre: "Oniver Alessandro Castro Gudiño", equipo: "Sin Grupo", kit: 3, talla: "M", ruta: "Larga", menor: "Si"},
+  {folio: 164, nombre: "Wendy Espinoza Madril", equipo: "Coma-Drejas MTB", kit: 2, talla: "XS", ruta: "Corta", menor: ""},
+  {folio: 165, nombre: "Julio Cesar Juárez Bedolla", equipo: "Wolf Bikers", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 166, nombre: "César Gaspar Aguilera", equipo: "Pedalitos Team Morelia", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 167, nombre: "Saul", equipo: "ZihuaBikers", kit: 2, talla: "S", ruta: "Larga", menor: "Si"},
+  {folio: 168, nombre: "Mayte López Romero", equipo: "BBS en la Pedaleada", kit: 2, talla: "XS", ruta: "Larga", menor: ""},
+  {folio: 169, nombre: "Daniel Maldonado Medina", equipo: "Mapaches MTB", kit: 3, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 170, nombre: "Erick Serrano Aguirre", equipo: "Justicieros del Pedal", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 171, nombre: "Jonathan Moreno Martinez", equipo: "Sin grupo", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 172, nombre: "Alan Yahir Cardenas Perez", equipo: "Sin grupo", kit: 3, talla: "M", ruta: "Corta", menor: "Si"},
+  {folio: 173, nombre: "Helí Maldonado", equipo: "Mapaches MTB", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 174, nombre: "Quirino Rangel Ontiveros", equipo: "Sin Grupo", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 175, nombre: "Miguel Ángel M", equipo: "Sin grupo", kit: 2, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 176, nombre: "María Isabel Rodríguez Colin", equipo: "Sin Grupo", kit: 1, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 177, nombre: "Luis Alberto Alcauter Orozco", equipo: "Enfermos Biker", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 178, nombre: "Justino Sánchez de La Paz", equipo: "Brothers and Bikers", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 179, nombre: "Kiara Jissel Sánchez Lara", equipo: "Brothers and Bikers", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 180, nombre: "Obeth Salgado García", equipo: "Brothers and Bikers", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 181, nombre: "Ma Elena villanueva Gonzalez", equipo: "MTB Gabriel Zamora", kit: 3, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 182, nombre: "Antonio Peñaloza Ambario", equipo: "Pantecas MTB", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 183, nombre: "Miney Andrea Mollina Peralta", equipo: "Lobos Bike", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 184, nombre: "Jose Antonio Rosales Rumbo", equipo: "Sin grupo", kit: 4, talla: "M", ruta: "Corta", menor: "Si"},
+  {folio: 185, nombre: "Yeremi Rubicel Martínez Sánchez", equipo: "San Isidro Bike´s", kit: 2, talla: "M", ruta: "Larga", menor: "Si"},
+  {folio: 186, nombre: "Mariana Araceli Quintana Diaz", equipo: "Escuelita MTB", kit: 1, talla: "XS", ruta: "Corta", menor: ""},
+  {folio: 187, nombre: "Francisco Eduardo Quintana Piña", equipo: "Escuelita MTB", kit: 1, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 188, nombre: "Ivonne Rodríguez Arellano", equipo: "Escuelita MTB", kit: 1, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 189, nombre: "Alejandro Vega Rodríguez", equipo: "Tlahuicas Bike", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 190, nombre: "Arturo Nieto Contreras", equipo: "Avispones Bikers Morelos", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 191, nombre: "Ermes Olivares Lugo", equipo: "Tlahuicas Bike", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 192, nombre: "Jorge Delgadillo Pérez", equipo: "Pedaleros Pabellón", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 193, nombre: "Jose Alfredo Esparza Pedroza", equipo: "Pedaleros Pabellón", kit: 1, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 194, nombre: "Hugo Ruvalcaba Gámez", equipo: "Pedaleros Pabellón", kit: 3, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 195, nombre: "James Powell", equipo: "Pedaleros Pabellón", kit: 1, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 196, nombre: "Dalel Veronica Hernández", equipo: "Pedaleros Pabellón", kit: 3, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 197, nombre: "Cesar Benjamin Solorio Rodriguez", equipo: "Mapogos", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 198, nombre: "Luis Johan Zendejas Zavala", equipo: "Mapogos", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 199, nombre: "José Luis Zendejas Aguilera", equipo: "Mapogos", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 200, nombre: "Carlos Esteban Aguilar Olguín", equipo: "Mavericks MTB", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 201, nombre: "Lavonne Maciel Lara", equipo: "Psicoticos Biker", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 202, nombre: "Celso Samuel Manzo Nava", equipo: "Psicoticos Biker", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 203, nombre: "Jose Alberto Velazquez Cortez", equipo: "Ponchados MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 204, nombre: "Matteo Velazquez Berber", equipo: "Ponchados MTB", kit: 4, talla: "S", ruta: "Corta", menor: "Si"},
+  {folio: 205, nombre: "Carlos Alberto Villarreal Benítez", equipo: "Cocodrilos Bikers", kit: 2, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 206, nombre: "Kevin Apolonio Garibo", equipo: "Biker's Habillal Playa Azul", kit: 4, talla: "L", ruta: "Larga", menor: "Si"},
+  {folio: 207, nombre: "Gerardo Apolonio Ramirez", equipo: "Biker's Habillal Playa Azul", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 208, nombre: "Francisco Javier Montoya Montoya", equipo: "Sin grupo", kit: 3, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 209, nombre: "Esteban Javier Cruz Barrera", equipo: "Biker's Habillal Playa Azul", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 210, nombre: "Luis Martín Pimentel Rodriguez", equipo: "Sin grupo", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 211, nombre: "Octavio Hernández Gómez", equipo: "Biker's Habillal Playa Azul", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 212, nombre: "Michel Galeana bustos", equipo: "Sin grupo", kit: 1, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 213, nombre: "Nefertari Laurel Vergara", equipo: "Sin grupo", kit: 1, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 214, nombre: "Filiberto Bustos Reyes", equipo: "Sinb grupo", kit: 1, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 215, nombre: "Jose Antonio Farias Mireles", equipo: "Capibaras", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 216, nombre: "Víctor Núñez", equipo: "Psicóticos Bikers", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 217, nombre: "Ali Yair Núñez", equipo: "Psicóticos Bikers", kit: 4, talla: "M", ruta: "Corta", menor: "Si"},
+  {folio: 218, nombre: "Erik Ivan Ruiz Giles", equipo: "Thunder Bikers", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 219, nombre: "Luis Gallardo", equipo: "Sin grupo", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 220, nombre: "Iván Jesús Suárez Manzo", equipo: "Sin grupo", kit: 1, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 221, nombre: "Rosa Esmeralda García Olivera", equipo: "Sin grupo", kit: 1, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 222, nombre: "Esmeralda Ibañez Sanabria", equipo: "Sin grupo", kit: 1, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 223, nombre: "Juan Castañeda García", equipo: "Biker's Habillal Playa Azul", kit: 2, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 224, nombre: "Bryan Pérez Bazán", equipo: "Sexyclistas", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 225, nombre: "Luis Enrique Chávez Blanco", equipo: "Justicieros del Pedal", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 226, nombre: "Diego Yair Damián López", equipo: "Costeñitos Biker", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 227, nombre: "Rutilo Castrejón Casarrubias", equipo: "Sin grupo", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 228, nombre: "Lilia González Nava", equipo: "Sin grupo", kit: 4, talla: "XXXL", ruta: "Corta", menor: ""},
+  {folio: 229, nombre: "Estanislao Barreto Hernández", equipo: "Sin grupo", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 230, nombre: "Ana Italvi José Barrios", equipo: "Sin grupo", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 231, nombre: "Fanny Carmen Rocha Vega", equipo: "Tecuanis Bikers", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 232, nombre: "Obed Torres Sánchez", equipo: "Nogaleros MTB", kit: 3, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 233, nombre: "Nancy Torres Sánchez", equipo: "Nogaleros MTB", kit: 3, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 234, nombre: "Carlos Naim Hernández Torres", equipo: "Nogaleros MTB", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 235, nombre: "Rosario Piedra Ayala", equipo: "ZihuaBikers", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 236, nombre: "Oziel Sánchez Pérez", equipo: "Nogaleros MTB", kit: 2, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 237, nombre: "Miguel Ángel Tabarez Vargas", equipo: "Sin grupo", kit: 1, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 238, nombre: "Fernando Leyva Sotelo", equipo: "ZihuaBikers", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 239, nombre: "Manuel Salvador Amaro Gonzalez", equipo: "Justicieros del Pedal", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 240, nombre: "Felipe de Jesus Mercado martinez", equipo: "Sin Grupo", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 241, nombre: "Ramiro Magallón Estrada", equipo: "Sin Grupo", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 242, nombre: "Aaron Federico Rios Cruz", equipo: "Sin Grupo", kit: 4, talla: "M", ruta: "Larga", menor: "Si"},
+  {folio: 243, nombre: "Jorge Issac Garrido Rivera", equipo: "Tecuanis Bikers", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 244, nombre: "Roberto Carlos Ramírez Magadan", equipo: "Biker's Habillal Playa Azul", kit: 3, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 245, nombre: "Patricia Durán Duarte", equipo: "Tecuanis Bikers", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 246, nombre: "Abed Lujano Emiliano", equipo: "Biker's Habillal Playa Azul", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 247, nombre: "Alejandro Mariche Salinas", equipo: "Panthers Team", kit: 4, talla: "S", ruta: "Larga", menor: "Si"},
+  {folio: 248, nombre: "Francisco Javier Toralva Lozano", equipo: "Wolf bikers", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 249, nombre: "Joel López Quiroz", equipo: "Wolf Bikers", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 250, nombre: "Osmar Lopez Pineda", equipo: "Costeñitos Bike Zihuatanejo", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 251, nombre: "Francisco Javier Serrano Pineda", equipo: "Wolf Bikers", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 252, nombre: "Uzziel Vázquez López", equipo: "Wolf Bikers", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 253, nombre: "Osiel López Pineda", equipo: "Costeñitos Bike Zihuatanejo", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 254, nombre: "David Brown", equipo: "Wolfbikers", kit: 3, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 255, nombre: "José Óscar López Miranda", equipo: "Costeñitos Bike Zihuatanejo", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 256, nombre: "Freddit Betancourth Abarca", equipo: "ZihuaBikers", kit: 1, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 257, nombre: "Freddit Alexei Betancourth Mariano", equipo: "ZihuaBikers", kit: 1, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 258, nombre: "Silvino Aldahir Morales Mercado", equipo: "BBS en la Pedaleada", kit: 1, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 259, nombre: "Pedro Alfonso Silva García", equipo: "García’s", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 260, nombre: "Kassandra Cruz Delgado", equipo: "García’s", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 261, nombre: "Julieta Silva García", equipo: "García’s", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 262, nombre: "Jorge Alfonso Silva Martínez", equipo: "García’s", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 263, nombre: "Claudia García Hernández", equipo: "García’s", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 264, nombre: "Josué García", equipo: "García’s", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 265, nombre: "Juan Carlos Mora", equipo: "Mora's Baikers", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 266, nombre: "Julio Hair Mendoza Lacunza", equipo: "Tecuanis Bikers", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 267, nombre: "Auria Valeria Lorenzano Ramírez", equipo: "Tecuanis Bikers", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 268, nombre: "Victor Villanueva Valdez", equipo: "S´tilos Bikers MTB", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 269, nombre: "Christopher Martínez Chala", equipo: "S´tilos Bikers MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 270, nombre: "Nancy Ramírez Alvarado", equipo: "S´tilos Bikers MTB", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 271, nombre: "Nathaly Valenzo Santiago", equipo: "ZihuaBikers", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 272, nombre: "Jesús Maciel Sánchez", equipo: "ZihuaBikers", kit: 3, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 273, nombre: "Yuliana Texta Villegas", equipo: "Tecuanis Bikers", kit: 4, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 274, nombre: "Liliana Vargas", equipo: "Iusagrarios BIkers", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 275, nombre: "Victor Manuel Salas", equipo: "Iusagrarios BIkers", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 276, nombre: "Victor Matias Salas", equipo: "Iusagrarios BIkers", kit: 4, talla: "infantil 12", ruta: "Corta", menor: "Si"},
+  {folio: 277, nombre: "Flor Guadalupe Hernández Hernández", equipo: "Sin grupo", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 278, nombre: "Eduardo Montañez Alcaraz", equipo: "Sin grupo", kit: 4, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 279, nombre: "Miguel Ángel Hernández Cortéz", equipo: "Sin grupo", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 280, nombre: "Amor García", equipo: "Sin grupo", kit: 4, talla: "S", ruta: "Larga", menor: ""},
+  {folio: 281, nombre: "Chiche Man", equipo: "Sin grupo", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 282, nombre: "Gael Trejo Bustos", equipo: "Sin grupo", kit: 2, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 283, nombre: "Adrián Vega villa", equipo: "Troncones Trails Mtb", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 284, nombre: "Fermin Sanchez", equipo: "Troncones Trails Mtb", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 285, nombre: "Wilfrido Valle", equipo: "Troncones Trails Mtb", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 286, nombre: "Leopoldo Santana", equipo: "Troncones Trails Mtb", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 287, nombre: "Gricelda Castro", equipo: "Troncones Trails Mtb", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 288, nombre: "Guillermina Ramires", equipo: "Troncones Trails Mtb", kit: 4, talla: "S", ruta: "Larga", menor: ""},
+  {folio: 289, nombre: "César Hurtado", equipo: "Troncones Trails Mtb", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 290, nombre: "Benito Castro", equipo: "Troncones Trails Mtb", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 291, nombre: "Ramiro Valle", equipo: "Troncones Trails Mtb", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 292, nombre: "Caleb Castro mora", equipo: "Sin grupo", kit: 2, talla: "S", ruta: "Corta", menor: "Si"},
+  {folio: 293, nombre: "Alan Maximiliano De la Cruz Chávez", equipo: "Thunder Bikers", kit: 4, talla: "M", ruta: "Corta", menor: "Si"},
+  {folio: 294, nombre: "Margarita Sánchez Onofre", equipo: "Tecuanis Bikers", kit: 3, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 295, nombre: "Rafael Gómez Carranza", equipo: "Sin grupo", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 296, nombre: "Abel Raya", equipo: "Sin grupo", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 297, nombre: "Argenis Donizetty", equipo: "Zankas Bike", kit: 4, talla: "S", ruta: "Larga", menor: ""},
+  {folio: 298, nombre: "Esteban Apreza Martinez", equipo: "Sin grupo", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 299, nombre: "Ivette Garcia Juarez", equipo: "Coyotes Zacapu", kit: 2, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 300, nombre: "Enrique Aguilar Prieto", equipo: "Coyotes Zacapu", kit: 2, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 301, nombre: "Miguel Angel Maldonado Delgado", equipo: "Coyotes Zacapu", kit: 2, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 302, nombre: "José Antonio Aguilar Moreno", equipo: "Coyotes Zacapu", kit: 2, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 303, nombre: "Eduardo Aguilar Juárez", equipo: "Coyotes Zacapu", kit: 2, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 304, nombre: "J. Jesus Alonso Mondragón", equipo: "Linces MTB LZC", kit: 4, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 305, nombre: "Cristobal Argueta Gonzalez", equipo: "Topos Bike", kit: 1, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 306, nombre: "Juan Manuel Salinas Salinas", equipo: "Topos Bike", kit: 1, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 307, nombre: "Luis Adrian Gon Gal", equipo: "Topos Bike", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 308, nombre: "Angelica Salazar López", equipo: "ZihuaBikers", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 309, nombre: "Eric Serrano Salgado", equipo: "RoadRunners MTB", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 310, nombre: "Eric Giovanny Serrano Vargas", equipo: "RoadRunners MTB", kit: 4, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 311, nombre: "Francisco Ramon García Ayala", equipo: "Agraciados Bike", kit: 1, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 312, nombre: "Danna Paola Salazar Rivera", equipo: "Costeñitos Bike Zihuatanejo", kit: 4, talla: "XS", ruta: "Corta", menor: ""},
+  {folio: 313, nombre: "Andrés Heredia Díaz", equipo: "Zankas Bike", kit: 4, talla: "L", ruta: "Larga", menor: "Si"},
+  {folio: 314, nombre: "Benjamin Heredia Portillo", equipo: "Zankas Bike", kit: 4, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 315, nombre: "Imer Campos Mercado", equipo: "Zankas Bike", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 316, nombre: "Jorge Ramos Abarca", equipo: "Compas Bikers", kit: 3, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 317, nombre: "Daniel Solís Hernández", equipo: "Compas Bikers", kit: 3, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 318, nombre: "Fernando Campos Covarubias", equipo: "Compas Bikers", kit: 3, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 319, nombre: "Alfonso Contreras Rosales", equipo: "Compas Bikers", kit: 3, talla: "L", ruta: "Corta", menor: ""},
+  {folio: 320, nombre: "Nelson Abarca Perez", equipo: "Sin grupo", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 321, nombre: "Diana Leticia Rodriguez Suastegui", equipo: "Fusión MTB", kit: 2, talla: "S", ruta: "Larga", menor: ""},
+  {folio: 322, nombre: "Alejandro Pedrizco Roman", equipo: "Fusión MTB", kit: 2, talla: "XXL", ruta: "Larga", menor: ""},
+  {folio: 323, nombre: "Luis Mardonio Betancourt Campos", equipo: "Fusión MTB", kit: 2, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 324, nombre: "Antonio Quiroz Revuelta", equipo: "Iusagrarios BIkers", kit: 3, talla: "S", ruta: "Corta", menor: "Si"},
+  {folio: 325, nombre: "Eduardo Abarca Perez", equipo: "Sin grupo", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 326, nombre: "Sergio Alonso Magaña", equipo: "Costeñitos", kit: 4, talla: "M", ruta: "Corta", menor: "Si"},
+  {folio: 327, nombre: "Miguel Ángel Martínez Ríos", equipo: "Costeñitos", kit: 4, talla: "M", ruta: "Larga", menor: "Si"},
+  {folio: 328, nombre: "Nora Lilitza Ochoa Vázquez", equipo: "Pedalitos Team Morelia", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 329, nombre: "Conrado Ochoa Vázquez", equipo: "Pedalitos Team Morelia", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 330, nombre: "Mariela Rangel Luna", equipo: "Sin grupo", kit: 2, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 331, nombre: "Luis Daniel González Rangel", equipo: "Sin grupo", kit: 3, talla: "L", ruta: "Corta", menor: "Si"},
+  {folio: 332, nombre: "Osmar Alexis González Rangel", equipo: "Sin grupo", kit: 1, talla: "M", ruta: "Corta", menor: "Si"},
+  {folio: 333, nombre: "Blanca Estela Soriano Tirado", equipo: "Coma-Drejas MTB", kit: 2, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 334, nombre: "Abel Ibarra Castañeda", equipo: "Coma-Drejas MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 335, nombre: "Diego Armando Rodriguez Oregón", equipo: "Sin grupo", kit: 4, talla: "S", ruta: "Corta", menor: "Si"},
+  {folio: 336, nombre: "Julian Serrano Salomón", equipo: "Sin grupo", kit: 4, talla: "XXL", ruta: "Corta", menor: ""},
+  {folio: 337, nombre: "Jorge Nael Sánchez Serrano", equipo: "Sin grupo", kit: 4, talla: "Infantil 14", ruta: "Corta", menor: "Si"},
+  {folio: 338, nombre: "Josel García vargas", equipo: "Costeñitos", kit: 3, talla: "XL", ruta: "Corta", menor: ""},
+  {folio: 339, nombre: "Camelia Adriana Gonzalez Barrera", equipo: "Guzmán”s Tours", kit: 2, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 340, nombre: "Victor Manuel Galeana Salgado", equipo: "RoadRunners MTB", kit: 4, talla: "M", ruta: "Larga", menor: ""},
+  {folio: 341, nombre: "Israel Bustos Pérez", equipo: "Zankas Bike", kit: 2, talla: "XL", ruta: "Larga", menor: ""},
+  {folio: 342, nombre: "Jayson Josue Cordova Solis", equipo: "Biker's Habillal Playa Azul", kit: 4, talla: "L", ruta: "Corta", menor: "Si"},
+  {folio: 343, nombre: "Alberto Gómez Cornejo", equipo: "Bicimas LZC", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 344, nombre: "Alberto Gómez Cornejo", equipo: "Bicimas LZC", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 345, nombre: "Alberto Gómez Cornejo", equipo: "Bicimas LZC", kit: 4, talla: "12", ruta: "Corta", menor: ""},
+  {folio: 346, nombre: "Erick Figueroa Núñez", equipo: "Costeñitos Bike Zihuatanejo", kit: 4, talla: "L", ruta: "Corta", menor: "Si"},
+  {folio: 347, nombre: "Fidel Gutiérrez Farías", equipo: "Tecuanis Biker", kit: 4, talla: "S", ruta: "Corta", menor: ""},
+  {folio: 348, nombre: "Sergio Cabrera Gómez", equipo: "S´tilos Bikers MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 349, nombre: "Ricardo Cuadros Mata", equipo: "S´tilos Bikers MTB", kit: 4, talla: "M", ruta: "Corta", menor: ""},
+  {folio: 350, nombre: "Alan Contreras Espinoza", equipo: "Zankas Bike", kit: 4, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 351, nombre: "Guadalupe de Jesús Santibáñez Aguilar", equipo: "Iguanas Bike Huetamo", kit: 2, talla: "S", ruta: "Larga", menor: ""},
+  {folio: 352, nombre: "Rubén Santibáñez Romero", equipo: "Iguanas Bike Huetamo", kit: 2, talla: "L", ruta: "Larga", menor: ""},
+  {folio: 353, nombre: "Kevin Alexander Mayo Rios", equipo: "RoadRunners MTB", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 354, nombre: "Araceli Carrasco Del Rio", equipo: "Alacranes Bike Team", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 355, nombre: "Marino Solorio", equipo: "RoadRunners MTB", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 356, nombre: "José Aaron Espino Lamberto", equipo: "Justicieros del Pedal", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 357, nombre: "Miguel Ángel Badillo Lugardo", equipo: "Nogaleros MTB", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 358, nombre: "Norberto Leyva", equipo: "Sin grupo", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 359, nombre: "Sergio Ángel Leyva", equipo: "Sin grupo", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 360, nombre: "Eduardo Fidel Mercado Zavaleta", equipo: "Ciclistas Tlapa", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 361, nombre: "Raúl Alberto Valdovinos Garcia", equipo: "Biker's Habillal Playa Azul", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 362, nombre: "Leonel Ramirez Calderón", equipo: "Mapaches MTB", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 363, nombre: "María José Leyva", equipo: "Sin grupo", kit: "B", talla: "B", ruta: "Corta", menor: "Si"},
+  {folio: 364, nombre: "Victor Alfonso Leyva Ramos", equipo: "Zankas Bike", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 365, nombre: "Jesús Arturo Pedraza Ávila", equipo: "Sin grupo", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 366, nombre: "Oliver Arana Rodróguez", equipo: "Sin grupo", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 367, nombre: "Angelo Gabriel Rubio Salgado", equipo: "ZihuaBikers", kit: "B", talla: "B", ruta: "Corta", menor: "Si"},
+  {folio: 368, nombre: "Erika Adame Serrano", equipo: "ZihuaBikers", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 369, nombre: "Erendira Salgado Landeros", equipo: "ZihuaBikers", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 370, nombre: "Vadir Alberto Pérez Flores", equipo: "Garcia’s", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 371, nombre: "Enrique Israel Torres Robles", equipo: "Avispones Bikers Morelos", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 372, nombre: "Lorenzo Sandoval Salgado", equipo: "Avispones Bikers Morelos", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 373, nombre: "Jorge Reyes Rivera", equipo: "Pantecas MTB", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 374, nombre: "Johnny Martinez", equipo: "Thunder Bikers", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 375, nombre: "Mario Cabrera", equipo: "Iguanos Bikers", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 376, nombre: "Héctor Acosta", equipo: "ZihuaBikers", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 377, nombre: "Jonny Joel Chávez Albarrán", equipo: "Sin grupo", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 378, nombre: "Enrique Castañon Calderón", equipo: "Grillos MTB", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 379, nombre: "Edgar Castañon", equipo: "Grillos MTB", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 380, nombre: "José Macias Caballero", equipo: "Osos Negros", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 381, nombre: "Alma Patricia García González", equipo: "Osos Negros", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 382, nombre: "Briana Rodriguez", equipo: "Shar Bikers", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 383, nombre: "Elva Delgado Romero", equipo: "FFZ", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 384, nombre: "Marisela Rámirez Soto", equipo: "FFZ", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 385, nombre: "Ismael García Bracamontes", equipo: "Thunder Bikers", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 386, nombre: "Eliel García Mora", equipo: "Thunder Bikers", kit: "B", talla: "B", ruta: "Corta", menor: "Si"},
+  {folio: 387, nombre: "Garel Mendoza", equipo: "BBS en la Pedaleada", kit: "B", talla: "B", ruta: "Corta", menor: "Si"},
+  {folio: 388, nombre: "José Luis Ruiz Ayvar", equipo: "Güichos Bikers", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 389, nombre: "Omar Zepeda", equipo: "Zepeda Bikers", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 390, nombre: "Marcos Gordillo Olivares", equipo: "Grillos MTB", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 391, nombre: "Paris Augusto Orduña Peralta", equipo: "Zankas Bike", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 392, nombre: "Francisco García Otero", equipo: "Zankas Bike", kit: "B", talla: "B", ruta: "Corta", menor: ""},
+  {folio: 393, nombre: "Uriel Alejandro Gutierrez Sánchez", equipo: "Zankas Bike", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 394, nombre: "Roberto Carlos Téllez Vázquez", equipo: "Zankas Bike", kit: "B", talla: "B", ruta: "Larga", menor: ""},
+  {folio: 395, nombre: "Darwin De Jesús Castro", equipo: "Sin grupo", kit: "B", talla: "B", ruta: "Corta", menor: ""}
+
+        ];
+        const equipos = ["ZihuaBikers", "Justicieros del Pedal", "Rodadores Bike", "Mapaches MTB", "Sin Grupo"];
+        const tallas = ["S", "M", "L", "XL", "XXL"];
+        const rutas = ["Corta", "Larga"];
+        for (let i = 11; i <= 410; i++) {
+            cyclists.push({
+                folio: i,
+                nombre: `Ciclista ${i}`,
+                equipo: equipos[Math.floor(Math.random() * equipos.length)],
+                kit: Math.floor(Math.random() * 4) + 1,
+                talla: tallas[Math.floor(Math.random() * tallas.length)],
+                ruta: rutas[Math.floor(Math.random() * rutas.length)],
+                menor: Math.random() < 0.1 ? "Si" : ""
+            });
+        }
+
+        // Configuración de paginación
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let filteredCyclists = [];
+
+        // Función para llenar la tabla
+        function populateTable(data, page) {
+            const tableBody = document.getElementById('tableBody');
+            const tableContainer = document.getElementById('tableContainer');
+            const pagination = document.getElementById('pagination');
+            const initialMessage = document.getElementById('initialMessage');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const resultsCount = document.getElementById('resultsCount');
+
+            loadingSpinner.style.display = 'block';
+            tableBody.innerHTML = '';
+            setTimeout(() => {
+                if (data.length === 0) {
+                    tableContainer.style.display = 'none';
+                    pagination.style.display = 'none';
+                    initialMessage.style.display = 'block';
+                    resultsCount.textContent = document.getElementById('searchInput').value ? '0 resultados encontrados' : '';
+                    updatePagination(data, page);
+                } else {
+                    tableContainer.style.display = 'block';
+                    pagination.style.display = 'flex';
+                    initialMessage.style.display = 'none';
+                    const start = (page - 1) * itemsPerPage;
+                    const end = start + itemsPerPage;
+                    const pageData = data.slice(start, end);
+                    pageData.forEach(cyclist => {
+                        const row = document.createElement('tr');
+                        row.classList.add('row-hover', 'fade-in');
+                        row.innerHTML = `
+                            <td class="px-4 py-3 text-sm">${cyclist.folio}</td>
+                            <td class="px-4 py-3 text-sm">${cyclist.nombre}</td>
+                            <td class="px-4 py-3 text-sm">${cyclist.equipo}</td>
+                            <td class="px-4 py-3 text-sm">${cyclist.kit}</td>
+                            <td class="px-4 py-3 text-sm">${cyclist.talla}</td>
+                            <td class="px-4 py-3 text-sm">${cyclist.ruta}</td>
+                            <td class="px-4 py-3 text-sm">${cyclist.menor}</td>
+                        `;
+                        row.addEventListener('click', () => showModal(cyclist));
+                        tableBody.appendChild(row);
+                    });
+                    resultsCount.textContent = `${data.length} resultados encontrados`;
+                    updatePagination(data, page);
+                }
+                loadingSpinner.style.display = 'none';
+            }, 300);
+        }
+
+        // Función para actualizar la paginación
+        function updatePagination(data, page) {
+            const totalPages = Math.ceil(data.length / itemsPerPage);
+            document.getElementById('pageInfo').textContent = data.length > 0 ? `Página ${page} de ${totalPages}` : '';
+            const pageNumbers = document.getElementById('pageNumbers');
+            pageNumbers.innerHTML = '';
+            if (data.length === 0) return;
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            for (let i = startPage; i <= endPage; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.classList.add('px-3', 'py-1', 'rounded-lg', 'focus:outline-none', 'focus:ring-2', 'focus:ring-teal-500');
+                btn.classList.add(i === page ? 'bg-teal-600' : 'bg-teal-500');
+                btn.classList.add(i === page ? 'text-white' : 'text-white', 'hover:bg-teal-600');
+                btn.addEventListener('click', () => {
+                    currentPage = i;
+                    populateTable(filteredCyclists, currentPage);
+                });
+                pageNumbers.appendChild(btn);
+            }
+            document.getElementById('firstPage').disabled = page === 1;
+            document.getElementById('prevPage').disabled = page === 1;
+            document.getElementById('nextPage').disabled = page === totalPages;
+            document.getElementById('lastPage').disabled = page === totalPages;
+        }
+
+        // Función para mostrar el modal
+        function showModal(cyclist) {
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = `
+                <p><strong class="text-teal-900">Folio:</strong> ${cyclist.folio}</p>
+                <p><strong class="text-teal-900">Nombre:</strong> ${cyclist.nombre}</p>
+                <p><strong class="text-teal-900">Equipo:</strong> ${cyclist.equipo}</p>
+                <p><strong class="text-teal-900">Kit:</strong> ${cyclist.kit}</p>
+                <p><strong class="text-teal-900">Talla:</strong> ${cyclist.talla}</p>
+                <p><strong class="text-teal-900">Ruta:</strong> ${cyclist.ruta}</p>
+                <p><strong class="text-teal-900">Menor de Edad:</strong> ${cyclist.menor || 'No'}</p>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        // Función para cerrar el modal
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // Función de búsqueda con debounce
+        let debounceTimeout;
+        function searchTable() {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => {
+                const searchInput = document.getElementById('searchInput').value.toLowerCase();
+                if (searchInput === '') {
+                    filteredCyclists = [];
+                    currentPage = 1;
+                    populateTable(filteredCyclists, currentPage);
+                } else {
+                    filteredCyclists = cyclists.filter(cyclist => 
+                        Object.values(cyclist).some(value => 
+                            value.toString().toLowerCase().includes(searchInput)
+                        )
+                    );
+                    currentPage = 1;
+                    populateTable(filteredCyclists, currentPage);
+                }
+            }, 300);
+        }
+
+        // Limpiar búsqueda
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            filteredCyclists = [];
+            currentPage = 1;
+            populateTable(filteredCyclists, currentPage);
+        }
+
+        // Inicializar la página
+        populateTable(filteredCyclists, currentPage);
+
+        // Eventos
+        document.getElementById('searchInput').addEventListener('input', searchTable);
+        document.getElementById('clearSearch').addEventListener('click', clearSearch);
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) closeModal();
+        });
+        document.getElementById('firstPage').addEventListener('click', () => {
+            currentPage = 1;
+            populateTable(filteredCyclists, currentPage);
+        });
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                populateTable(filteredCyclists, currentPage);
+            }
+        });
+        document.getElementById('nextPage').addEventListener('click', () => {
+            if (currentPage < Math.ceil(filteredCyclists.length / itemsPerPage)) {
+                currentPage++;
+                populateTable(filteredCyclists, currentPage);
+            }
+        });
+        document.getElementById('lastPage').addEventListener('click', () => {
+            currentPage = Math.ceil(filteredCyclists.length / itemsPerPage);
+            populateTable(filteredCyclists, currentPage);
+        });
+    </script>
+</body>
+</html>
