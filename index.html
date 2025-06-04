@@ -589,17 +589,7 @@
         const equipos = ["ZihuaBikers", "Justicieros del Pedal", "Rodadores Bike", "Mapaches MTB", "Sin Grupo"];
         const tallas = ["S", "M", "L", "XL", "XXL"];
         const rutas = ["Corta", "Larga"];
-        for (let i = 11; i <= 410; i++) {
-            cyclists.push({
-                folio: i,
-                nombre: `Ciclista ${i}`,
-                equipo: equipos[Math.floor(Math.random() * equipos.length)],
-                kit: Math.floor(Math.random() * 4) + 1,
-                talla: tallas[Math.floor(Math.random() * tallas.length)],
-                ruta: rutas[Math.floor(Math.random() * rutas.length)],
-                menor: Math.random() < 0.1 ? "Si" : ""
-            });
-        }
+
 
         // Configuración de paginación
         let currentPage = 1;
